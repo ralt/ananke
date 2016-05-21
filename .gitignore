@@ -1,0 +1,9 @@
+*~
+*.pyc
+._*
+.eggs/
+*.egg-info
+AUTHORS
+ChangeLog
+pbr-*.egg/
+.env/
