@@ -1,40 +1,26 @@
-import os
-import sys
-from subprocess import Popen
-from select import select
+import pexpect
+
+
+def filter():
+    chunks = []
+
+    def _filter(chunk):
+        if ord(chunk) != 13:
+            chunks.append(chunk)
+            return chunk
+
+        command = "".join(chunks)
+        if command == "ls":
+            return chr(29)
+
+        while len(chunks) > 0:
+            chunks.pop()
+
+        return chunk
+
+    return _filter
 
 
 def main():
-    master, slave = os.openpty()
-    stdin = sys.stdin.fileno()
-    stdout = sys.stdout.fileno()
-
-    try:
-        ttyname = os.ttyname(slave)
-
-        def _preexec():
-            os.setsid()
-            open(ttyname, "r+")
-
-        process = Popen(
-            args=["/bin/bash"],
-            preexec_fn=_preexec,
-            stdin=slave,
-            stdout=slave,
-            stderr=slave,
-            close_fds=True,
-        )
-
-        while True:
-            if process.poll() is not None:
-                break
-
-            r, _, _ = select([master, sys.stdin], [], [])
-
-            if master in r:
-                os.write(stdout, os.read(master, 1024))
-            if sys.stdin in r:
-                os.write(master, os.read(stdin, 1024))
-    finally:
-        os.close(master)
-        os.close(slave)
+    c = pexpect.spawn("/bin/bash")
+    c.interact(escape_character=chr(29), input_filter=filter())
