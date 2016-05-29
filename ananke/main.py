@@ -1,5 +1,6 @@
 import os
 import sys
+import tty
 from subprocess import Popen
 from select import select
 
@@ -10,26 +11,22 @@ def main():
     stdout = sys.stdout.fileno()
 
     try:
-        ttyname = os.ttyname(slave)
-
-        def _preexec():
-            os.setsid()
-            open(ttyname, "r+")
+        tty.setraw(sys.stdout)
 
         process = Popen(
             args=["/bin/bash"],
-            preexec_fn=_preexec,
             stdin=slave,
             stdout=slave,
             stderr=slave,
             close_fds=True,
+            start_new_session=True,
         )
 
         while True:
             if process.poll() is not None:
                 break
 
-            r, _, _ = select([master, sys.stdin], [], [])
+            r, _, _ = select([master, sys.stdin], [], [], 0.2)
 
             if master in r:
                 os.write(stdout, os.read(master, 1024))
